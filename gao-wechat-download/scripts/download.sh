@@ -5,7 +5,7 @@
 set -e
 
 URL="$1"
-OUTPUT_DIR="${2:-$HOME/weichat/raw}"
+OUTPUT_DIR="${OUTPUT_DIR:-$HOME/wechat/raw}"
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 CLOAKBROWSER_PATH="/root/.cloakbrowser/chromium-146.0.7680.177.4/chrome"
 USER_AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
@@ -236,32 +236,36 @@ self_heal() {
 git_push() {
     local title=$(grep '^title:' "$OUTPUT_FILE" 2>/dev/null | sed 's/title: "//;s/"$//' || echo "WeChat article")
     
-    # Function to find git root and check for remote
-    find_git_repo() {
-        local dir="$1"
-        # Check if current dir is inside a git repo
-        if git -C "$dir" rev-parse --is-inside-work-tree &>/dev/null; then
-            local git_root=$(git -C "$dir" rev-parse --show-toplevel)
-            # Check if this repo has a remote
-            if git -C "$git_root" remote | grep -q .; then
-                echo "$git_root"
-                return 0
-            fi
-        fi
-        return 1
-    }
-    
-    # Try current directory first
+    # Auto-detect git repo: check OUTPUT_DIR, then parent directories
     local repo_root=""
-    repo_root=$(find_git_repo "${OUTPUT_DIR}") || {
-        # Try parent directory
-        repo_root=$(find_git_repo "${OUTPUT_DIR}/..") || {
-            log "Git: no git repo with remote found, skipping"
-            return 0
-        }
-    }
     
-    log "Git: found repo at $repo_root"
+    # Check if OUTPUT_DIR itself is a git repo
+    if git -C "$OUTPUT_DIR" rev-parse --is-inside-work-tree &>/dev/null; then
+        repo_root=$(git -C "$OUTPUT_DIR" rev-parse --show-toplevel)
+    fi
+    
+    # If not found, walk up parent directories
+    if [[ -z "$repo_root" ]]; then
+        local check_dir="$OUTPUT_DIR"
+        while [[ "$check_dir" != "/" ]]; do
+            if git -C "$check_dir" rev-parse --is-inside-work-tree &>/dev/null; then
+                repo_root=$(git -C "$check_dir" rev-parse --show-toplevel)
+                # Verify repo has remote
+                if git -C "$repo_root" remote | grep -q .; then
+                    break
+                fi
+            fi
+            check_dir=$(dirname "$check_dir")
+        done
+    fi
+    
+    # Skip if no repo found
+    if [[ -z "$repo_root" ]] || ! git -C "$repo_root" remote | grep -q .; then
+        log "Git: no repo with remote found, skipping"
+        return 0
+    fi
+    
+    log "Git: detected repo at $repo_root"
     cd "$repo_root"
     
     # Add and commit
@@ -271,18 +275,14 @@ git_push() {
         return 0
     }
     
-    # Push to remote (try all remotes)
-    local pushed=false
-    for remote in $(git remote); do
-        local branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
-        if git push "$remote" "$branch" 2>/dev/null; then
-            log "Git: pushed to $remote/$branch"
-            pushed=true
-            break
-        fi
-    done
-    
-    [[ "$pushed" == "false" ]] && log "Git: commit done, push failed (no network or auth required)"
+    # Push to remote
+    local branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "main")
+    local remote=$(git remote | head -1)
+    if git push "$remote" "$branch" 2>/dev/null; then
+        log "Git: pushed to $remote/$branch"
+    else
+        log "Git: commit done, push failed (check auth/network)"
+    fi
 }
 
 # ============================================

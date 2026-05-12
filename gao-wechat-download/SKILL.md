@@ -13,7 +13,7 @@ allowed-tools:
   - search_files
 metadata:
   author: gao
-  version: "1.0.2"
+  version: "1.0.4"
 ---
 
 # GAO WeChat Download Skill
@@ -32,9 +32,21 @@ Downloads WeChat articles with dual-mode fallback and self-evolution capabilitie
 
 | Setting | Value |
 |---------|-------|
-| Output dir | `~/weichat/raw` (configurable via OUTPUT_DIR) |
-| Git integration | Auto-detects git repo in current/parent directory |
+| Output dir | `~/weichat/raw` (configurable via OUTPUT_DIR env var) |
+| Git repo | Auto-detected (walks up from OUTPUT_DIR to find nearest git repo with remote) |
 | CloakBrowser | `/root/.cloakbrowser/chromium-146.0.7680.177.4/chrome` |
+
+**Repo Structure** (example):
+```
+~/weichat/          # Main git repository (detected automatically)
+├── raw/            # Downloaded articles (tracked in main repo)
+│   ├── article-1.md
+│   ├── article-1/imgs/*.png
+│   └── ...
+└── articles/       # Other content
+```
+
+**Git Detection**: The script automatically finds the git repo by walking up from OUTPUT_DIR's parent directories. Works with any repo location — not hardcoded to `~/weichat`.
 
 ## Workflow (Auto-triggered)
 
@@ -156,6 +168,22 @@ WeChat images on CDN may block scraping.
 PCRE2 regex in bash doesn't support `\u4e00-\u9fff` Unicode ranges.
 **Fix**: This skill uses Python for slug generation.
 
+### Nested .git Directory Causes Submodule Behavior
+If the `raw` directory contains its own `.git` subdirectory, git will treat it as a submodule (mode 160000) instead of a regular directory when added to the parent repo.
+
+**Symptoms**: `git add raw/` shows "adding embedded git repository" warning, files don't get tracked.
+
+**Fix**:
+```bash
+git rm --cached raw          # Remove submodule entry from index
+rm -rf raw/.git              # Delete nested git repo
+git add raw/                 # Add properly as regular directory
+git commit -m "Add raw directory"
+git push
+```
+
+**Prevention**: Never run `git init` inside the output directory. The script detects the parent repo automatically and pushes from there.
+
 ## Environment Variables
 
 | Variable | Description |
@@ -172,6 +200,7 @@ PCRE2 regex in bash doesn't support `\u4e00-\u9fff` Unicode ranges.
 | Both blocked | Skill evolves, update UA |
 | Git push fails | Check remote permissions |
 | Images missing | Verify Referer header |
+| raw shows as submodule | `rm -rf raw/.git && git add raw/` |
 
 ## Scripts
 
@@ -195,4 +224,6 @@ PCRE2 regex in bash doesn't support `\u4e00-\u9fff` Unicode ranges.
 |---------|------|---------|
 | 1.0.0 | 2026-05-12 | Initial: curl/CloakBrowser dual-mode + self-heal |
 | 1.0.1 | 2026-05-12 | Added Python extraction (more reliable than bash regex) |
-| 1.0.2 | 2026-05-12 | Auto-detect git repo in current/parent directory (no hardcoded remote) |
+| 1.0.2 | 2026-05-12 | Auto-detect git repo in current/parent directory |
+| 1.0.3 | 2026-05-12 | Document nested .git pitfall, update troubleshooting |
+| 1.0.4 | 2026-05-12 | Flexible git repo detection: walks up from OUTPUT_DIR to find any repo with remote (not hardcoded to ~/weichat) |
