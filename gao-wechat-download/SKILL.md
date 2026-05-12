@@ -32,7 +32,7 @@ Downloads WeChat articles with dual-mode fallback and self-evolution capabilitie
 
 | Setting | Value |
 |---------|-------|
-| Output dir | `~/weichat/raw` (configurable via OUTPUT_DIR env var) |
+| Output dir | `~/wechat/raw` (configurable via OUTPUT_DIR env var) |
 | Git repo | Auto-detected (walks up from OUTPUT_DIR to find nearest git repo with remote) |
 | CloakBrowser | `/root/.cloakbrowser/chromium-146.0.7680.177.4/chrome` |
 
