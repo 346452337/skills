@@ -62,8 +62,13 @@ download_mode: "curl|cloakbrowser"
 
 | Setting | Value |
 |---------|-------|
-| Output dir | `~/wechat/raw` (configurable via OUTPUT_DIR env) |
-| CloakBrowser | `/root/.cloakbrowser/chromium-146.0.7680.177.3/chrome` |
+| Output dir | `/root/wechat/raw` (configurable via OUTPUT_DIR env) |
+| CloakBrowser | Auto-detect from `/root/.cloakbrowser/` |
+
+**Features**:
+- Auto-detect CloakBrowser version (no hardcoded path)
+- Auto-detect git repo in parent directories
+- Self-evolution on repeated failures
 
 ## Environment Variables
 
@@ -114,6 +119,7 @@ git clone https://github.com/YOUR_USERNAME/wechat.git ~/wechat
 
 ## Version
 
+- 1.0.6 - Auto-detect CloakBrowser version, no hardcoded path
 - 1.0.5 - Multi-agent compatibility (Claude Code, Cursor, Gemini, Custom)
 - 1.0.4 - Flexible git repo detection
 - 1.0.3 - Nested .git pitfall documented

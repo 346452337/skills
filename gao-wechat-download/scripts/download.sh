@@ -7,10 +7,16 @@ set -e
 URL="$1"
 OUTPUT_DIR="${OUTPUT_DIR:-/root/wechat/raw}"
 SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
-CLOAKBROWSER_PATH="/root/.cloakbrowser/chromium-146.0.7680.177.3/chrome"
+
+# Auto-detect CloakBrowser version
+CLOAKBROWSER_BASE="/root/.cloakbrowser"
+if [[ -d "$CLOAKBROWSER_BASE" ]]; then
+    CLOAKBROWSER_PATH=$(ls -d "$CLOAKBROWSER_BASE"/chromium-*/*/chrome 2>/dev/null | head -1)
+fi
+CLOAKBROWSER_PATH="${CLOAKBROWSER_PATH:-$CLOAKBROWSER_BASE/chromium-146.0.7680.177.3/chrome}"
+
 USER_AGENT="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36"
 
-OUTPUT_DIR="${OUTPUT_DIR/#\~/$HOME}"
 mkdir -p "${OUTPUT_DIR}"
 
 log() { echo "[gao-wechat] $1"; }
